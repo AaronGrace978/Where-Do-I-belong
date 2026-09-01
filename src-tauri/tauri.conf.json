@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Where Do I Belong",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "identifier": "com.wheredoibelong.app",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -15,9 +15,14 @@
         "title": "Where Do I Belong",
         "width": 1480,
         "height": 920,
-        "minWidth": 1100,
-        "minHeight": 720,
-        "center": true
+        "minWidth": 800,
+        "minHeight": 500,
+        "center": true,
+        "resizable": true,
+        "decorations": true,
+        "transparent": false,
+        "theme": "Dark",
+        "backgroundColor": "#07090d"
       }
     ],
     "security": {
@@ -27,6 +32,14 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "copyright": "Copyright (c) 2026 Aaron Grace. All rights reserved.",
+    "publisher": "Aaron Grace",
+    "homepage": "https://github.com/AaronGrace978/Where-Do-I-belong",
+    "category": "Lifestyle",
+    "shortDescription": "A love letter with a globe. Find your people.",
+    "longDescription": "Spin the Earth. Click any place. Ask the compass who lives there — unique people, high-game rooms, high-trust towns — and whether the jobs will let you stay.",
+    "license": "LicenseRef-Proprietary",
+    "licenseFile": "../LICENSE",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

@@ -60,7 +60,12 @@ jobs:
         with:
           tagName: v__VERSION__
           releaseName: "Where Do I Belong v__VERSION__"
-          releaseBody: "A love letter with a globe. Find your people. Installers for Windows, macOS, and Linux are attached below."
+          releaseBody: |
+            Proprietary desktop release of Where Do I Belong. Official binaries only — see LICENSE.
+
+            **Steam Deck / Linux:** this build disables the WebKitGTK DMA-BUF path that painted a blank white window, forces X11 inside Gamescope, keeps the native window dark, and uses a conservative globe on handheld GPUs.
+
+            Installers for Windows, macOS, and Linux (x64 + ARM, AppImage + deb) are attached below.
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}

@@ -21,6 +21,7 @@ import {
   saveSettings,
 } from "./lib/store";
 import { PROVIDER_LABEL } from "./lib/models";
+import { handheldViewport, loadPlatform, type PlatformInfo } from "./lib/platform";
 
 export default function App() {
   const [profile, setProfile] = useState<SoulProfile>(() => loadProfile());
@@ -38,10 +39,25 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [handheld, setHandheld] = useState(() => handheldViewport());
+  const [platform, setPlatform] = useState<PlatformInfo>({
+    os: "unknown",
+    steamDeck: false,
+    gamescope: false,
+    handheld: handheldViewport(),
+  });
 
   useEffect(() => saveProfile(profile), [profile]);
   useEffect(() => saveSettings(settings), [settings]);
   useEffect(() => saveChat(messages), [messages]);
+  useEffect(() => {
+    void loadPlatform().then(setPlatform);
+    const mq = window.matchMedia("(max-width: 1360px), (max-height: 860px)");
+    const apply = () => setHandheld(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
 
   const hasKey =
     (settings.provider === "ollama" && settings.ollamaKey) ||
@@ -227,8 +243,10 @@ export default function App() {
 
   const title = useMemo(() => "Where Do I Belong", []);
 
+  const compact = handheld || platform.handheld || platform.steamDeck;
+
   return (
-    <div className="app">
+    <div className={compact ? "app handheld" : "app"}>
       <Globe
         pin={pin}
         pins={pins}
@@ -236,6 +254,7 @@ export default function App() {
         ionToken={settings.cesiumIonToken}
         globeMode={settings.globeMode}
         hasDossier={Boolean(pin)}
+        platform={{ ...platform, handheld: compact }}
         onPick={(place) => {
           setPin(place);
           setShowLetter(false);
