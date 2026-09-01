@@ -1,5 +1,5 @@
 import "../cesiumSetup";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Cartesian2,
   Cartesian3,
@@ -26,6 +26,8 @@ import "cesium/Build/Cesium/Widgets/widgets.css";
 import type { ArchetypeId, PinPlace } from "../lib/types";
 import { ARCHETYPE_META } from "../lib/archetypes";
 import { CITIES } from "../data/cities";
+import type { PlatformInfo } from "../lib/platform";
+import { isConservativeGpu } from "../lib/platform";
 
 export interface GlobeHandle {
   flyTo: (place: PinPlace, height?: number) => void;
@@ -38,8 +40,13 @@ interface Props {
   ionToken: string;
   globeMode: "satellite" | "ion" | "photoreal";
   hasDossier?: boolean;
+  platform: PlatformInfo;
   onPick: (place: PinPlace) => void;
   onReady?: () => void;
+}
+
+function pinFromCity(c: (typeof CITIES)[number]): PinPlace {
+  return { name: c.name, lat: c.lat, lon: c.lon, city: c, country: c.country };
 }
 
 export default function Globe({
@@ -49,6 +56,7 @@ export default function Globe({
   ionToken,
   globeMode,
   hasDossier = false,
+  platform,
   onPick,
   onReady,
 }: Props) {
@@ -57,40 +65,75 @@ export default function Globe({
   const spinRef = useRef(true);
   const onPickRef = useRef(onPick);
   onPickRef.current = onPick;
+  const [failed, setFailed] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
+
+  const conservative = isConservativeGpu(platform);
 
   useEffect(() => {
     if (!el.current) return;
     let destroyed = false;
     let removeTick: (() => void) | undefined;
     let handler: ScreenSpaceEventHandler | undefined;
+    setFailed(null);
+    setReady(false);
 
     const esri = new UrlTemplateImageryProvider({
       url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-      maximumLevel: 19,
+      maximumLevel: conservative ? 16 : 19,
       credit: "Esri · Maxar · Earthstar Geographics",
     });
 
-    const viewer = new Viewer(el.current, {
-      animation: false,
-      timeline: false,
-      geocoder: false,
-      homeButton: false,
-      sceneModePicker: false,
-      baseLayerPicker: false,
-      navigationHelpButton: false,
-      fullscreenButton: false,
-      infoBox: false,
-      selectionIndicator: false,
-      creditContainer: document.createElement("div"),
-      baseLayer: new ImageryLayer(esri),
-    });
+    let viewer: Viewer;
+    try {
+      viewer = new Viewer(el.current, {
+        animation: false,
+        timeline: false,
+        geocoder: false,
+        homeButton: false,
+        sceneModePicker: false,
+        baseLayerPicker: false,
+        navigationHelpButton: false,
+        fullscreenButton: false,
+        infoBox: false,
+        selectionIndicator: false,
+        creditContainer: document.createElement("div"),
+        baseLayer: new ImageryLayer(esri),
+        msaaSamples: conservative ? 1 : 4,
+        orderIndependentTranslucency: !conservative,
+        contextOptions: {
+          webgl: {
+            alpha: false,
+            antialias: !conservative,
+            powerPreference: conservative ? "default" : "high-performance",
+            preserveDrawingBuffer: false,
+            failIfMajorPerformanceCaveat: false,
+          },
+        },
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("Cesium viewer failed to start", err);
+      setFailed(msg);
+      return;
+    }
+
     viewerRef.current = viewer;
 
+    const sky = Color.fromCssColorString("#07090d");
+    viewer.scene.backgroundColor = sky;
+    viewer.scene.globe.baseColor = Color.fromCssColorString("#0b1520");
     viewer.scene.globe.enableLighting = false;
-    if (viewer.scene.skyAtmosphere) viewer.scene.skyAtmosphere.show = true;
-    viewer.scene.fog.enabled = true;
-    viewer.scene.highDynamicRange = true;
-    viewer.scene.globe.depthTestAgainstTerrain = true;
+    // HDR blows out to white on some Mesa / Steam Deck GPUs.
+    viewer.scene.highDynamicRange = !conservative;
+    if (viewer.scene.skyAtmosphere) viewer.scene.skyAtmosphere.show = !conservative;
+    viewer.scene.fog.enabled = !conservative;
+    if (viewer.scene.postProcessStages.fxaa) {
+      viewer.scene.postProcessStages.fxaa.enabled = conservative;
+    }
+    viewer.scene.globe.tileCacheSize = conservative ? 40 : 100;
+    viewer.scene.globe.depthTestAgainstTerrain = !conservative;
+    viewer.resolutionScale = conservative ? 0.85 : 1;
     viewer.scene.screenSpaceCameraController.minimumZoomDistance = 120;
     viewer.scene.screenSpaceCameraController.maximumZoomDistance = 4.5e7;
     viewer.clock.shouldAnimate = true;
@@ -105,7 +148,7 @@ export default function Globe({
 
     const tick = () => {
       if (spinRef.current && viewer && !viewer.isDestroyed()) {
-        viewer.camera.rotate(Cartesian3.UNIT_Z, -0.00028);
+        viewer.camera.rotate(Cartesian3.UNIT_Z, conservative ? -0.00018 : -0.00028);
       }
     };
     viewer.clock.onTick.addEventListener(tick);
@@ -144,13 +187,7 @@ export default function Globe({
       const snap = near && near.d < 1.2 ? near.c : null;
       onPickRef.current(
         snap
-          ? {
-              name: snap.name,
-              lat: snap.lat,
-              lon: snap.lon,
-              city: snap,
-              country: snap.country,
-            }
+          ? pinFromCity(snap)
           : { name: "This place", lat, lon },
       );
     }, ScreenSpaceEventType.LEFT_UP);
@@ -158,11 +195,11 @@ export default function Globe({
     void (async () => {
       if (ionToken) Ion.defaultAccessToken = ionToken;
       try {
-        if (globeMode === "ion" && ionToken) {
+        if (!conservative && globeMode === "ion" && ionToken) {
           viewer.terrainProvider = await createWorldTerrainAsync();
           const buildings = await createOsmBuildingsAsync();
           if (!destroyed) viewer.scene.primitives.add(buildings);
-        } else if (globeMode === "photoreal" && ionToken) {
+        } else if (!conservative && globeMode === "photoreal" && ionToken) {
           viewer.scene.globe.show = false;
           const tileset = await createGooglePhotorealistic3DTileset();
           if (!destroyed) viewer.scene.primitives.add(tileset);
@@ -171,7 +208,10 @@ export default function Globe({
         console.warn("Cesium ion extras failed, staying on satellite globe", err);
         viewer.scene.globe.show = true;
       }
-      if (!destroyed) onReady?.();
+      if (!destroyed) {
+        setReady(true);
+        onReady?.();
+      }
     })();
 
     return () => {
@@ -183,9 +223,9 @@ export default function Globe({
       if (!viewer.isDestroyed()) viewer.destroy();
       viewerRef.current = null;
     };
-    // globeMode/ionToken re-init on purpose
+    // globeMode/ionToken/platform re-init on purpose
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [globeMode, ionToken]);
+  }, [globeMode, ionToken, conservative]);
 
   useEffect(() => {
     const viewer = viewerRef.current;
@@ -259,7 +299,7 @@ export default function Globe({
         },
       });
     }
-  }, [pins, pin, archetype]);
+  }, [pins, pin, archetype, ready]);
 
   useEffect(() => {
     const viewer = viewerRef.current;
@@ -285,9 +325,30 @@ export default function Globe({
     return () => cancelAnimationFrame(id);
   }, [hasDossier]);
 
+  if (failed) {
+    return (
+      <div className={hasDossier ? "globe-wrap has-dossier fallback-atlas" : "globe-wrap fallback-atlas"}>
+        <div className="atlas-copy">
+          <p className="eyebrow">Atlas</p>
+          <h2>The globe needs a GPU path this machine would not give it.</h2>
+          <p className="muted">The compass still works. Pick a city from the atlas.</p>
+        </div>
+        <div className="atlas-grid">
+          {CITIES.map((c) => (
+            <button key={c.id} type="button" onClick={() => onPick(pinFromCity(c))}>
+              <strong>{c.name}</strong>
+              <em>{c.country}</em>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={hasDossier ? "globe-wrap has-dossier" : "globe-wrap"}>
       <div ref={el} className="globe-canvas" />
+      {!ready ? <div className="globe-loading">Waking the Earth…</div> : null}
       <div className="globe-hint">
         Drag to spin · Click to drop a pin · Scroll into every street
       </div>

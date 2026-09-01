@@ -2,7 +2,11 @@ use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use tauri::ipc::Channel;
 
-const USER_AGENT: &str = "WhereDoIBelong/0.1 (https://github.com/AaronGrace978/Where-Do-I-belong)";
+const USER_AGENT: &str = concat!(
+    "WhereDoIBelong/",
+    env!("CARGO_PKG_VERSION"),
+    " (https://github.com/AaronGrace978/Where-Do-I-belong)"
+);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatMessage {

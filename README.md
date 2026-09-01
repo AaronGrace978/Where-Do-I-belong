@@ -12,9 +12,15 @@ This is a **Tauri 2** desktop app: photoreal satellite globe, a belonging atlas,
 
 **Repo:** [github.com/AaronGrace978/Where-Do-I-belong](https://github.com/AaronGrace978/Where-Do-I-belong)
 
+## License
+
+**Proprietary. All rights reserved.** © 2026 Aaron Grace.
+
+You may run official release binaries for personal, non-commercial use. You may not copy, modify, redistribute, or sell the source or binaries without written permission. See [`LICENSE`](LICENSE).
+
 ## Install
 
-Releases ship for **Windows**, **macOS** (Apple Silicon + Intel), and **Linux** (x64 + ARM):
+Releases ship for **Windows**, **macOS** (Apple Silicon + Intel), and **Linux** (x64 + ARM), including the Steam Deck:
 
 [Download the latest release](https://github.com/AaronGrace978/Where-Do-I-belong/releases/latest)
 
@@ -22,7 +28,13 @@ Releases ship for **Windows**, **macOS** (Apple Silicon + Intel), and **Linux** 
 | --- | --- |
 | Windows | `.msi` / `.exe` |
 | macOS | `.dmg` |
-| Linux | `.AppImage` / `.deb` |
+| Linux / Steam Deck | `.AppImage` / `.deb` |
+
+### Steam Deck
+
+Use **Desktop Mode**, then install the **x86_64 / amd64 AppImage** (or `.deb` via Discover / `dpkg`).
+
+v1.0.0 ships a WebKitGTK workaround so the window should open dark with the globe — not a blank white screen. If an older build still whites out, update to this release. Game Mode works if you add the AppImage as a non-Steam game; Desktop Mode is the smoother path.
 
 ## Run from source
 

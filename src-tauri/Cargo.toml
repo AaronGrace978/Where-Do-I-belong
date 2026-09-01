@@ -1,9 +1,12 @@
 [package]
 name = "where-do-i-belong"
-version = "0.1.0"
+version = "1.0.0"
 description = "A globe and compass for finding your people"
 authors = ["Aaron Grace"]
 edition = "2021"
+license = "LicenseRef-Proprietary"
+repository = "https://github.com/AaronGrace978/Where-Do-I-belong"
+homepage = "https://github.com/AaronGrace978/Where-Do-I-belong"
 
 [lib]
 name = "tauri_app_lib"

@@ -118,7 +118,11 @@ export default function SettingsPanel({ settings, onChange, onClose }: Props) {
         ) : null}
 
         <footer className="letter-actions">
-          <span className="muted">Esri World Imagery · OpenStreetMap · Wikimedia</span>
+          <span className="muted">
+            Version {__APP_VERSION__} · © 2026 Aaron Grace · All rights reserved
+            <br />
+            Esri World Imagery · OpenStreetMap · Wikimedia
+          </span>
           <button type="button" onClick={onClose}>
             Done
           </button>
